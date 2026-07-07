@@ -5,34 +5,44 @@ import Link from "next/link";
 
 export default function Header() {
     const { data: session, status } = useSession();
+
     return (
-        <header className="bg-white shadow-md">
-            <nav className="container mx-auto px-6 py-4 flex justify-between items-center">
+        <header className="bg-white shadow">
+            <div className="mx-w-7xl max-auto px-4 py-4 flex justify-between items-center">
                 <Link href="/" className="text-xl font-bold text-gray-800">
-                    MyApp
+                    ECサイト
                 </Link>
-                <div>
+
+                <nav className="flex items-center gap-4">
+                    <Link
+                        href="/products"
+                        className="text-gray-600 hover:text-gray-800"
+                    >
+                        商品一覧
+                    </Link>
+
                     {status === "loading" ? (
-                        <p>Loadign...</p>
+                        <span className="text-gray-600">読み込み中...</span>
                     ) : session ? (
-                        <div className="flex items-center space-x-4">
-                            <p>ようこそ、{session.user?.name}さん</p>
+                        <div>
+                            <span>{session.user?.name}さん</span>
                             <button
-                                onClick={() =>
-                                    signOut({ callbackUrl: "/login" })
-                                }
-                                className="px-4 py-2 font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+                                onClick={() => signOut({ callbackUrl: "/" })}
+                                className="bg-gray-200 text-gray-700 px-4 py-2 font-medium rounded hover:bg-gray-300 transition-colors"
                             >
                                 ログアウト
                             </button>
                         </div>
                     ) : (
-                        <Link href="/login" className="px-4 py-2 font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700">
+                        <Link
+                            href="/login"
+                            className="px-4 py-2 font-medium text-white bg-indigo-600 rounded hover:bg-indigo-700 transition-colors"
+                        >
                             ログイン
                         </Link>
                     )}
-                </div>
-            </nav>
+                </nav>
+            </div>
         </header>
     );
 }

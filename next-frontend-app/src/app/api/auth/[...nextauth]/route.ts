@@ -13,113 +13,69 @@ const handler = NextAuth({
             },
             // 入力された値を受け取り、認証を行う関数
             async authorize(credentials, req) {
-                console.log(req.headers);
+                // console.log("受け取ったCredentials:", credentials);
+                // console.log("受け取ったreq:", req);
 
-                // CSRFトークンとセッションクッキーを取得
-                const csrfRes = await fetch(
-                    `${process.env.NEXT_PUBLIC_API_BASE_URL}/sanctum/csrf-cookie`,
-                );
-
-                // getSetCookie()で全Set-Cookieを配列で取得（Node.js 18.14+）
-                const setCookieEntries: string[] =
-                    typeof (csrfRes.headers as unknown as { getSetCookie?: () => string[] }).getSetCookie === "function"
-                        ? (csrfRes.headers as unknown as { getSetCookie: () => string[] }).getSetCookie()
-                        : [csrfRes.headers.get("set-cookie") ?? ""];
-
-                // 各Set-Cookieからname=value部分のみ取り出す
-                const cookiePairs = setCookieEntries
-                    .map(entry => entry.split(";")[0].trim())
-                    .filter(Boolean)
-                    .join("; ");
-
-                // XSRF-TOKEN値を抽出（X-XSRF-TOKENヘッダー用）
-                const xsrfToken = setCookieEntries
-                    .map(entry => entry.match(/XSRF-TOKEN=([^;]+)/)?.[1])
-                    .find(Boolean) ?? "";
-
-                console.log("[DEBUG] csrf status:", csrfRes.status);
-                console.log("[DEBUG] setCookieEntries count:", setCookieEntries.length);
-                console.log("[DEBUG] cookiePairs:", cookiePairs);
-                console.log("[DEBUG] X-XSRF-TOKEN header:", decodeURIComponent(xsrfToken));
+                if (!credentials?.email || !credentials?.password) {
+                    return null;
+                }
 
                 // Laravel APIへログインリクエスト送信
-                const res = await fetch(
-                    `${process.env.NEXT_PUBLIC_API_BASE_URL}/login`,
-                    {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "X-XSRF-TOKEN": decodeURIComponent(xsrfToken),
-                            Cookie: cookiePairs,
-                        },
-                        body: JSON.stringify({
-                            email: credentials?.email,
-                            password: credentials?.password,
-                        }),
-                    },
-                );
+                try {
+                    const res = await fetch(
+                        `${process.env.LARAVEL_API_BASE_URL}/api/login`,
+                        {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                // サーバーに対してjsonでresponseを返すように指示
+                                Accept: "application/json",
+                                // "X-XSRF-TOKEN": decodeURIComponent(xsrfToken),
+                                // Cookie: cookiePairs,
+                            },
+                            body: JSON.stringify({
+                                email: credentials.email,
+                                password: credentials.password,
+                            }),
+                        });
 
+                    if (!res.ok) {
+                        return null;
+                    }
 
-                console.log("login status:", res.status);
-                console.log("login set-cookie:", res.headers.get("set-cookie"));
-                if (!res.ok) console.log("login body:", await res.clone().text());
+                    const data = await res.json();
+                    console.log("Login response データ:", data);
 
+                    console.log("とってきたデータ：" + JSON.stringify(data));
 
-                if (!res.ok) {
+                    return {
+                        id: data.user.id,
+                        name: data.user.name,
+                        email: data.user.email,
+                        accessToken: data.token,
+                    };
+                } catch (error) {
+                    console.error("Login errorです:", error);
                     return null;
                 }
-
-                // ログインレスポンスの全Set-Cookieを取得
-                const loginCookieEntries: string[] =
-                    typeof (res.headers as unknown as { getSetCookie?: () => string[] }).getSetCookie === "function"
-                        ? (res.headers as unknown as { getSetCookie: () => string[] }).getSetCookie()
-                        : [res.headers.get("set-cookie") ?? ""];
-
-                // Max-Age=0（削除対象）のクッキーを除き、有効なクッキーだけを送る
-                const loginCookiePairs = loginCookieEntries
-                    .filter(entry => !/max-age=0/i.test(entry))
-                    .map(entry => entry.split(";")[0].trim())
-                    .filter(Boolean)
-                    .join("; ");
-
-                console.log("[DEBUG] loginCookiePairs:", loginCookiePairs);
-
-                // user情報取得
-                // Referer を付けることで Sanctum がセッション認証（SPA認証）として扱う
-                const userRes = await fetch(
-                    `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/user`,
-                    {
-                        headers: {
-                            Cookie: loginCookiePairs,
-                            Referer: process.env.NEXT_PUBLIC_FRONTEND_URL ?? "http://localhost:3000",
-                            Origin: process.env.NEXT_PUBLIC_FRONTEND_URL ?? "http://localhost:3000",
-                        },
-                    },
-                );
-                console.log("[DEBUG] userRes status:", userRes.status);
-
-                if (!userRes.ok) {
-                    return null;
-                }
-
-                const user = await userRes.json();
-
-                // userオブジェクトを返す
-                return user;
             },
         }),
     ],
+
     callbacks: {
         async jwt({ token, user }) {
             // ログイン時に返されたユーザー情報をトークンに含める
             if (user) {
-                token.user = user;
+                // jwtが受け取ったtokenに新しくaccessTokenとidを追加。そしてuserオブジェクトのaccessTokenとidをtokenにセットする
+                token.accessToken = user.accessToken;
+                token.id = user.id;
             }
-            return token;
+            return token; // 返されたtokenは次のsessionコールバックに渡される
         },
         async session({ session, token }) {
-            // JsonWebTokenの情報をセッションに含める
-            session.user = token.user;
+            // JWTの情報をセッションに含める
+            session.accessToken = token.accessToken;
+            session.user.id = token.id;
             return session;
         },
     },

@@ -10,8 +10,8 @@ interface Product {
 
 // fetchする非同期関数
 async function getProducts(): Promise<Product[]> {
-    const url = `${process.env.NEXT_PUBLIC_API_BASE_URL}/products`;
-    console.log(`Fetching data from: ${url}`); // デバッグ用にURLをログ出力
+    const url = `${process.env.LARAVEL_API_BASE_URL}/api/products`;
+    console.log(`プロダクトをFetching data from: ${url}`); // デバッグ用にURLをログ出力
 
     const res = await fetch(url, {
         cache: "no-store", //開発中はcache無効で
