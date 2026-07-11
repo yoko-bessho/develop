@@ -30,8 +30,6 @@ const handler = NextAuth({
                                 "Content-Type": "application/json",
                                 // サーバーに対してjsonでresponseを返すように指示
                                 Accept: "application/json",
-                                // "X-XSRF-TOKEN": decodeURIComponent(xsrfToken),
-                                // Cookie: cookiePairs,
                             },
                             body: JSON.stringify({
                                 email: credentials.email,
@@ -46,7 +44,7 @@ const handler = NextAuth({
                     const data = await res.json();
                     console.log("Login response データ:", data);
 
-                    console.log("とってきたデータ：" + JSON.stringify(data));
+                    // console.log("とってきたデータ：" + JSON.stringify(data));
 
                     return {
                         id: data.user.id,
