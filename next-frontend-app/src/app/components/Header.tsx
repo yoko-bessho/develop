@@ -24,7 +24,19 @@ export default function Header() {
                     {status === "loading" ? (
                         <span className="text-gray-600">読み込み中...</span>
                     ) : session ? (
-                        <div>
+                        <div className="flex items-center gap-4">
+                            <Link
+                                href="/dashboard"
+                                className="text-gray-600 hover:text-gray-800"
+                            >
+                                ダッシュボード
+                            </Link>
+                            <Link
+                                href="/users"
+                                className="text-gray-600 hover:text-gray-800"
+                            >
+                                ユーザー一覧
+                            </Link>
                             <span>{session.user?.name}さん</span>
                             <button
                                 onClick={() => signOut({ callbackUrl: "/" })}
